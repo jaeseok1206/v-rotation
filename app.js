@@ -5,6 +5,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 
 const SIDE_LABEL = { home: 'HOME', away: 'AWAY' };
 const SIDE_COLOR = { home: 'var(--home)', away: 'var(--away)' };
+const LIB_ROLE = { recv: '리시브', dig: '디그' };
 
 // 코트 화면 배치 (lineup index: 0=1번 ... 5=6번)
 // 위쪽 팀은 아래(네트)를 바라보므로 좌우가 뒤집힌다
@@ -81,10 +82,11 @@ function circleHTML(side, idx, libIdx) {
   if (server) cls.push('server');
   let inner;
   if (idx === libIdx) {
-    const lib = player(side, st.libero[side]);
+    const act = S.activeLibero(st, side);
+    const lib = player(side, act.id);
     const mb = player(side, id);
     cls.push('libero');
-    inner = `<span class="pos">L</span><span class="no">${esc(lib?.no)}</span><span class="nm">${esc(lib?.name)}</span><span class="sub-for">↔ ${esc(mb?.no)}</span>`;
+    inner = `<span class="pos">L·${LIB_ROLE[act.role]}</span><span class="no">${esc(lib?.no)}</span><span class="nm">${esc(lib?.name)}</span><span class="sub-for">↔ ${esc(mb?.no)}</span>`;
   } else if (id) {
     const p = player(side, id);
     inner = `<span class="pos">${esc(p?.pos)}</span><span class="no">${esc(p?.no)}</span><span class="nm">${esc(p?.name)}</span>`;
@@ -109,15 +111,23 @@ function renderCourt() {
 }
 
 function ctrlHTML(side) {
-  const lib = player(side, st.libero[side]);
-  const libSel = sel?.kind === 'libero' && sel.side === side;
+  const libs = st.libero[side];
+  const active = st.phase === 'play' ? S.activeLibero(st, side) : null;
+  const chip = role => {
+    const own = player(side, libs[role]);
+    const otherRole = role === 'recv' ? 'dig' : 'recv';
+    const fallback = !own && libs[otherRole];
+    const isSel = sel?.kind === 'libero' && sel.side === side && sel.role === role;
+    const on = active?.role === role;
+    const body = own ? `${esc(own.no)} ${esc(own.name)}` : fallback ? `= ${LIB_ROLE[otherRole]}` : '지정';
+    return `<button class="lib-chip ${isSel ? 'selected' : ''} ${on ? 'on' : ''}" data-act="libero" data-side="${side}" data-role="${role}">
+      <span class="lb">${LIB_ROLE[role]} L</span><span class="lv">${body}</span></button>`;
+  };
   return `
+    <span class="tdot" style="background:${SIDE_COLOR[side]}" title="${SIDE_LABEL[side]}"></span>
     <button class="icon-btn" data-act="rot" data-side="${side}" data-dir="-1" aria-label="${SIDE_LABEL[side]} 역방향 한 칸">${ICON_CCW}</button>
     <button class="icon-btn" data-act="rot" data-side="${side}" data-dir="1" aria-label="${SIDE_LABEL[side]} 정방향 한 칸">${ICON_CW}</button>
-    <span class="tname" style="color:${SIDE_COLOR[side]}">${SIDE_LABEL[side]} · ${esc(teamOf(side)?.name)}</span>
-    <button class="lib-chip ${libSel ? 'selected' : ''}" data-act="libero" data-side="${side}">
-      <span class="lb">L</span>${lib ? `${esc(lib.no)} ${esc(lib.name)}` : '지정'}
-    </button>`;
+    ${chip('recv')}${chip('dig')}`;
 }
 
 function renderBench() {
@@ -127,21 +137,25 @@ function renderBench() {
   ).join('');
 
   const onCourt = new Set(st.lineup[side].filter(Boolean));
-  const list = roster(side).filter(p => !onCourt.has(p.id));
+  let list = roster(side).filter(p => !onCourt.has(p.id));
+  // 리베로 선택 중이면 L 포지션을 위로
+  if (sel?.kind === 'libero' && sel.side === side) list = [...list].sort((a, b) => (b.pos === 'L') - (a.pos === 'L'));
   const item = p => {
     const isSel = sel?.kind === 'bench' && sel.side === side && sel.id === p.id;
-    const isLib = st.libero[side] === p.id;
+    const libs = st.libero[side];
+    const libTag = [libs.recv === p.id && '리시브L', libs.dig === p.id && '디그L'].filter(Boolean).join('·');
     return `<li><button class="bp ${isSel ? 'selected' : ''}" data-act="bench" data-side="${side}" data-id="${esc(p.id)}">
       <span class="bno">${esc(p.no ?? '-')}</span>
       <span class="bnm">${esc(p.name)}</span>
-      <span class="bpos">${esc(p.pos)}${isLib ? ' · 리베로' : ''}</span>
+      <span class="bpos">${esc(p.pos)}${libTag ? ` · ${libTag}` : ''}</span>
     </button></li>`;
   };
   let head = '';
   if (sel?.side === side && sel.kind === 'slot') head = `<div class="bench-head">${sel.idx + 1}번 자리에 넣을 선수</div>`;
   else if (sel?.side === side && sel.kind === 'libero') {
-    head = `<div class="bench-head">리베로 선택</div>
-      <li><button class="add-btn" data-act="libero-clear" data-side="${side}">리베로 없음</button></li>`;
+    const desc = sel.role === 'recv' ? '상대 서브 때' : '우리 서브 때';
+    head = `<div class="bench-head">${LIB_ROLE[sel.role]} 리베로 (${desc})</div>
+      <li><button class="add-btn" data-act="libero-clear" data-side="${side}" data-role="${sel.role}">비우기 (다른 리베로가 겸임)</button></li>`;
   }
   $('#bench-list').innerHTML = head + list.map(item).join('') +
     `<li><button class="add-btn" data-act="add-player" data-side="${side}">+ 명단에 없는 선수 추가</button></li>`;
@@ -204,7 +218,14 @@ function setupModal(canCancel) {
     <h2>새 경기</h2>
     <label class="field">HOME 팀<select id="m-home">${opts(h)}</select></label>
     <label class="field">AWAY 팀<select id="m-away">${opts(a)}</select></label>
-    <label class="field">1세트 첫 서브<select id="m-serve"><option value="home">HOME</option><option value="away">AWAY</option></select></label>
+    <label class="field">시작 세트<select id="m-set">${[1, 2, 3, 4, 5].map(n => `<option value="${n}">${n}세트</option>`).join('')}</select></label>
+    <div id="m-mid" hidden>
+      <label class="field">지금까지 세트 스코어 (HOME : AWAY)<select id="m-sets"></select></label>
+      <div class="field">현재 세트 점수 (HOME : AWAY, 시작 전이면 0)
+        <div class="score-in"><input id="m-sh" type="number" inputmode="numeric" min="0" max="60" value="0"><span>:</span><input id="m-sa" type="number" inputmode="numeric" min="0" max="60" value="0"></div>
+      </div>
+    </div>
+    <label class="field"><span id="m-serve-l">첫 서브</span><select id="m-serve"><option value="home">HOME</option><option value="away">AWAY</option></select></label>
     <p>명단 기준: ${new Date(DATA.updatedAt).toLocaleDateString('ko-KR')} KOVO 등록 선수</p>
     <div class="btn-row">
       ${canCancel ? '<button class="btn" data-m="cancel">취소</button>' : '<span></span>'}
@@ -213,10 +234,26 @@ function setupModal(canCancel) {
     if (m === 'cancel') return closeModal();
     const home = $('#m-home').value, away = $('#m-away').value;
     if (home === away) return toast('서로 다른 팀을 고르세요');
-    st = S.newMatch(home, away, $('#m-serve').value);
+    const setNo = Number($('#m-set').value);
+    const [sh, sa] = setNo > 1 ? $('#m-sets').value.split(':').map(Number) : [0, 0];
+    const pts = v => Math.max(0, Math.min(60, Number(v) || 0));
+    const score = setNo > 1 ? { home: pts($('#m-sh').value), away: pts($('#m-sa').value) } : undefined;
+    st = S.newMatch(home, away, $('#m-serve').value, { setNo, setsWon: { home: sh, away: sa }, score });
     sel = null; benchTab = 'home';
     closeModal(); commit();
   });
+  $('#m-set').onchange = syncMidFields;
+  syncMidFields();
+}
+
+// 시작 세트에 맞춰 가능한 세트 스코어 목록 갱신 (합 = 시작세트-1, 어느 팀도 3 미만)
+function syncMidFields() {
+  const n = Number($('#m-set').value);
+  $('#m-mid').hidden = n === 1;
+  $('#m-serve-l').textContent = n === 1 ? '1세트 첫 서브' : '지금 서브권';
+  const opts = [];
+  for (let h = Math.min(2, n - 1); h >= 0; h--) { const a = n - 1 - h; if (a <= 2) opts.push(`${h}:${a}`); }
+  $('#m-sets').innerHTML = opts.map(o => `<option value="${o}">${o.replace(':', ' : ')}</option>`).join('');
 }
 
 function setEndModal(winner) {
@@ -306,7 +343,7 @@ function onSlot(side, idx) {
 function onBench(side, id) {
   if (sel?.kind === 'slot' && sel.side === side) return onSlotPick(side, sel.idx, id);
   if (sel?.kind === 'libero' && sel.side === side) {
-    S.setLibero(st, side, id); sel = null; buzz(); return commit();
+    S.setLibero(st, side, sel.role, id); sel = null; buzz(); return commit();
   }
   sel = (sel?.kind === 'bench' && sel.id === id) ? null : { kind: 'bench', side, id };
   render();
@@ -343,10 +380,12 @@ document.addEventListener('click', e => {
     case 'bench': return onBench(side, b.dataset.id);
     case 'tab': benchTab = side; return render();
     case 'rot': S.rotate(st, side, Number(b.dataset.dir)); buzz(); return commit();
-    case 'libero':
-      sel = (sel?.kind === 'libero' && sel.side === side) ? null : { kind: 'libero', side };
+    case 'libero': {
+      const role = b.dataset.role;
+      sel = (sel?.kind === 'libero' && sel.side === side && sel.role === role) ? null : { kind: 'libero', side, role };
       benchTab = side; return render();
-    case 'libero-clear': S.setLibero(st, side, null); sel = null; return commit();
+    }
+    case 'libero-clear': S.setLibero(st, side, b.dataset.role, null); sel = null; return commit();
     case 'score': return onScore(side);
     case 'undo': st = S.undo(st); sel = null; buzz(); toast('되돌림'); return commit();
     case 'end-set': return setEndModal(S.setWinner(st));

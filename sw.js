@@ -1,5 +1,5 @@
 // 앱 셸 캐시: 캐시 우선 + 백그라운드 갱신 (경기장 네트워크 불안정 대비)
-const CACHE = 'v-rotation-v1';
+const CACHE = 'v-rotation-v2';
 const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'state.js', 'data/players.json',
   'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
 

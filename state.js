@@ -6,21 +6,23 @@ export const other = s => (s === 'home' ? 'away' : 'home');
 const STORE_KEY = 'v-rotation:state:v1';
 const HISTORY_MAX = 300;
 
-export function newMatch(homeCode, awayCode, firstServe = 'home') {
+// opts: 경기 중간부터 볼 때 { setNo, setsWon:{home,away}, score:{home,away} }
+export function newMatch(homeCode, awayCode, firstServe = 'home', opts = {}) {
   return {
     phase: 'lineup',               // 'lineup' | 'play' | 'done'
     home: homeCode,
     away: awayCode,
     extra: { home: [], away: [] }, // 명단에 없는 임시 선수
-    setNo: 1,
-    setsWon: { home: 0, away: 0 },
+    setNo: opts.setNo || 1,
+    setsWon: { home: 0, away: 0, ...opts.setsWon },
     setScores: [],                 // [{home, away}]
-    score: { home: 0, away: 0 },
+    score: { home: 0, away: 0, ...opts.score },
     serving: firstServe,
     setFirstServe: firstServe,
     lineup: { home: Array(6).fill(null), away: Array(6).fill(null) },
     starters: { home: Array(6).fill(null), away: Array(6).fill(null) },
-    libero: { home: null, away: null },
+    // recv: 상대 서브(리시브) 때, dig: 우리 서브(디그) 때. 한쪽만 있으면 둘 다 그 선수
+    libero: { home: { recv: null, dig: null }, away: { recv: null, dig: null } },
     flipped: false,                // true 면 HOME 이 코트 위쪽
     history: [],
   };
@@ -30,9 +32,18 @@ export function newMatch(homeCode, awayCode, firstServe = 'home') {
 export function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    return raw ? migrate(JSON.parse(raw)) : null;
   } catch { return null; }
 }
+// 이전 버전 저장 데이터 호환
+function migrate(st) {
+  for (const side of SIDES) {
+    const l = st.libero?.[side];
+    if (!l || typeof l !== 'object') (st.libero ??= {})[side] = { recv: l ?? null, dig: null };
+  }
+  return st;
+}
+
 export function save(st) {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(st)); } catch { /* 저장 불가 환경 */ }
 }
@@ -53,7 +64,7 @@ export function pushHistory(st) {
 export function undo(st) {
   const prev = st.history.pop();
   if (!prev) return st;
-  return { ...JSON.parse(prev), history: st.history };
+  return migrate({ ...JSON.parse(prev), history: st.history });
 }
 
 // ---------- 로테이션 ----------
@@ -70,7 +81,7 @@ export function rotate(st, side, dir = 1) {
 export function score(st, side) {
   pushHistory(st);
   st.score[side] += 1;
-  if (st.serving !== side) {           // 사이드아웃 → 회전 후 서브권 획득
+  if (st.serving !== side) {                       // 사이드아웃 → 회전 후 서브권 획득
     st.lineup[side] = rotateForward(st.lineup[side]);
     st.serving = side;
   }
@@ -116,7 +127,9 @@ export function placePlayer(st, side, idx, playerId) {
   const from = lu.indexOf(playerId);
   if (from >= 0) lu[from] = lu[idx];
   lu[idx] = playerId;
-  if (st.libero[side] === playerId) st.libero[side] = null;
+  const lib = st.libero[side];
+  if (lib.recv === playerId) lib.recv = null;
+  if (lib.dig === playerId) lib.dig = null;
 }
 
 export function swapSlots(st, side, a, b) {
@@ -125,17 +138,26 @@ export function swapSlots(st, side, a, b) {
   [lu[a], lu[b]] = [lu[b], lu[a]];
 }
 
-export function setLibero(st, side, playerId) {
+// role: 'recv' | 'dig'
+export function setLibero(st, side, role, playerId) {
   pushHistory(st);
-  st.libero[side] = playerId;
+  st.libero[side][role] = playerId;
   const idx = st.lineup[side].indexOf(playerId);
   if (idx >= 0) st.lineup[side][idx] = null;
 }
 
+// 현재 상황(서브/리시브)에 맞는 리베로. 한쪽만 지정했으면 그 선수가 둘 다 담당
+export function activeLibero(st, side) {
+  const { recv, dig } = st.libero[side];
+  const serving = st.serving === side;
+  const id = serving ? (dig || recv) : (recv || dig);
+  const role = serving ? 'dig' : 'recv';
+  return id ? { id, role } : null;
+}
+
 // 리베로 표시: 후위(5,6번 및 서브권 없을 때 1번)의 MB 자리에 리베로를 덮어 보여줌
 export function liberoSlot(st, side, posOf) {
-  const lib = st.libero[side];
-  if (!lib || st.phase !== 'play') return -1;
+  if (!activeLibero(st, side) || st.phase !== 'play') return -1;
   const back = st.serving === side ? [4, 5] : [0, 4, 5]; // index 0=1번, 4=5번, 5=6번
   for (const i of back) {
     const id = st.lineup[side][i];
