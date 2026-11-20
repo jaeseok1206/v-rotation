@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0f1420">
+  <title>V-Rotation</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <header id="scorebar"></header>
+
+    <main id="main">
+      <section id="court-wrap">
+        <div class="team-ctrl" id="ctrl-top"></div>
+        <div id="court">
+          <div class="half" id="half-top"></div>
+          <div class="net"></div>
+          <div class="half" id="half-bottom"></div>
+        </div>
+        <div class="team-ctrl" id="ctrl-bottom"></div>
+      </section>
+
+      <aside id="bench">
+        <div id="bench-tabs"></div>
+        <ul id="bench-list"></ul>
+      </aside>
+    </main>
+
+    <footer id="actions"></footer>
+  </div>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card" id="modal-card"></div>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
