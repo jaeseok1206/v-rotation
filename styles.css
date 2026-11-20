@@ -9,6 +9,7 @@
   --court-line: #f4e7d6;
   --accent: #ffd23f;
   --danger: #ff5d5d;
+  --ok: #3ddc84;
   --home: #2a6fd6;
   --away: #e2392f;
   --radius: 12px;
@@ -137,7 +138,12 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .player .nm { font-size: min(3.6cqw, 11px); font-weight: 600; max-width: 92%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .player.empty { background: #0003; border: 2px dashed #fffb; color: #fffc; }
 .player.empty .no { font-size: min(6cqw, 18px); font-weight: 700; }
-.player.server { box-shadow: 0 0 0 3px var(--accent), 0 2px 8px #0008; }
+.pwrap { position: relative; display: inline-flex; }
+.serve-ball {
+  position: absolute; right: -8%; top: -8%; width: 38%; aspect-ratio: 1;
+  filter: drop-shadow(0 1px 2px #000a); pointer-events: none; z-index: 2;
+}
+.player.partner { border-color: var(--ok); border-width: 4px; }
 .player.selected { border-color: var(--accent); border-width: 4px; transform: scale(1.06); }
 .player.libero { --c: #f1f1f1; color: #111; }
 .player .slotno {
@@ -165,7 +171,8 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .bp .bnm { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bp .bpos { font-size: 10px; color: var(--muted); font-weight: 700; }
 .bp.selected { outline: 3px solid var(--accent); }
-.bp.on-court { opacity: .45; }
+.bp.partner { outline: 3px solid var(--ok); }
+.bp.dim { opacity: .35; }
 .bp:active { background: var(--line); }
 .bench-head { font-size: 10px; color: var(--muted); padding: 6px 4px 2px; font-weight: 700; letter-spacing: .05em; }
 .add-btn { width: 100%; padding: 10px; font-size: 12px; color: var(--muted); border: 1px dashed var(--line); border-radius: 9px; margin-top: 6px; }

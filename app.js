@@ -79,7 +79,8 @@ function circleHTML(side, idx, libIdx) {
   const server = st.phase === 'play' && st.serving === side && idx === 0;
   const cls = ['player'];
   if (isSel) cls.push('selected');
-  if (server) cls.push('server');
+  // 벤치 선수를 먼저 골랐다면, 그 선수와 교체로 묶인 코트 선수 강조
+  if (sel?.kind === 'bench' && sel.side === side && id && S.partnerOf(st, side, sel.id) === id) cls.push('partner');
   let inner;
   if (idx === libIdx) {
     const act = S.activeLibero(st, side);
@@ -94,7 +95,8 @@ function circleHTML(side, idx, libIdx) {
     cls.push('empty');
     inner = `<span class="no">${idx + 1}</span><span class="pos">자리</span>`;
   }
-  return `<div class="slot"><button class="${cls.join(' ')}" style="--c:${SIDE_COLOR[side]}" data-act="slot" data-side="${side}" data-idx="${idx}">${inner}</button></div>`;
+  const ball = server ? '<img class="serve-ball" src="icons/ball.png" alt="서브">' : '';
+  return `<div class="slot"><div class="pwrap"><button class="${cls.join(' ')}" style="--c:${SIDE_COLOR[side]}" data-act="slot" data-side="${side}" data-idx="${idx}">${inner}</button>${ball}</div></div>`;
 }
 
 function renderCourt() {
@@ -140,18 +142,28 @@ function renderBench() {
   let list = roster(side).filter(p => !onCourt.has(p.id));
   // 리베로 선택 중이면 L 포지션을 위로
   if (sel?.kind === 'libero' && sel.side === side) list = [...list].sort((a, b) => (b.pos === 'L') - (a.pos === 'L'));
+  // 경기 중 코트 선수를 골랐다면: 교체 짝이 있으면 그 선수만 강조, 이미 다른 짝이 있는 벤치 선수는 흐리게
+  const focusId = st.phase === 'play' && sel?.kind === 'slot' && sel.side === side ? st.lineup[side][sel.idx] : null;
+  const partner = focusId ? S.partnerOf(st, side, focusId) : null;
   const item = p => {
     const isSel = sel?.kind === 'bench' && sel.side === side && sel.id === p.id;
+    let mark = '';
+    if (focusId) mark = p.id === partner ? 'partner' : (partner || S.partnerOf(st, side, p.id)) ? 'dim' : '';
     const libs = st.libero[side];
     const libTag = [libs.recv === p.id && '리시브L', libs.dig === p.id && '디그L'].filter(Boolean).join('·');
-    return `<li><button class="bp ${isSel ? 'selected' : ''}" data-act="bench" data-side="${side}" data-id="${esc(p.id)}">
+    return `<li><button class="bp ${isSel ? 'selected' : ''} ${mark}" data-act="bench" data-side="${side}" data-id="${esc(p.id)}">
       <span class="bno">${esc(p.no ?? '-')}</span>
       <span class="bnm">${esc(p.name)}</span>
       <span class="bpos">${esc(p.pos)}${libTag ? ` · ${libTag}` : ''}</span>
     </button></li>`;
   };
   let head = '';
-  if (sel?.side === side && sel.kind === 'slot') head = `<div class="bench-head">${sel.idx + 1}번 자리에 넣을 선수</div>`;
+  if (sel?.side === side && sel.kind === 'slot') {
+    const pp = partner && player(side, partner);
+    head = pp
+      ? `<div class="bench-head">교체 가능: ${esc(pp.no)} ${esc(pp.name)} (이번 세트 교체 짝)</div>`
+      : `<div class="bench-head">${sel.idx + 1}번 자리에 넣을 선수</div>`;
+  }
   else if (sel?.side === side && sel.kind === 'libero') {
     const desc = sel.role === 'recv' ? '상대 서브 때' : '우리 서브 때';
     head = `<div class="bench-head">${LIB_ROLE[sel.role]} 리베로 (${desc})</div>

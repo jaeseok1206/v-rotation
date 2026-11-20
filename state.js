@@ -23,6 +23,7 @@ export function newMatch(homeCode, awayCode, firstServe = 'home', opts = {}) {
     starters: { home: Array(6).fill(null), away: Array(6).fill(null) },
     // recv: 상대 서브(리시브) 때, dig: 우리 서브(디그) 때. 한쪽만 있으면 둘 다 그 선수
     libero: { home: { recv: null, dig: null }, away: { recv: null, dig: null } },
+    subs: { home: [], away: [] },  // 이번 세트 교체 짝 [[나간 선수, 들어온 선수], ...]
     flipped: false,                // true 면 HOME 이 코트 위쪽
     history: [],
   };
@@ -37,6 +38,7 @@ export function load() {
 }
 // 이전 버전 저장 데이터 호환
 function migrate(st) {
+  st.subs ??= { home: [], away: [] };
   for (const side of SIDES) {
     const l = st.libero?.[side];
     if (!l || typeof l !== 'object') (st.libero ??= {})[side] = { recv: l ?? null, dig: null };
@@ -115,6 +117,7 @@ export function endSet(st, winner) {
 export function startSet(st) {
   pushHistory(st);
   st.starters = { home: [...st.lineup.home], away: [...st.lineup.away] };
+  st.subs = { home: [], away: [] };
   st.setFirstServe = st.serving;
   st.phase = 'play';
 }
@@ -125,11 +128,26 @@ export function placePlayer(st, side, idx, playerId) {
   pushHistory(st);
   const lu = st.lineup[side];
   const from = lu.indexOf(playerId);
+  // 경기 중 벤치 선수 투입 = 교체. 처음 짝을 이루는 교체면 기록 (되돌아오는 교체는 기존 짝)
+  const out = lu[idx];
+  if (st.phase === 'play' && from < 0 && out && out !== playerId
+      && !partnerOf(st, side, out) && !partnerOf(st, side, playerId)) {
+    st.subs[side].push([out, playerId]);
+  }
   if (from >= 0) lu[from] = lu[idx];
   lu[idx] = playerId;
   const lib = st.libero[side];
   if (lib.recv === playerId) lib.recv = null;
   if (lib.dig === playerId) lib.dig = null;
+}
+
+// 이번 세트에서 이 선수와 교체로 묶인 상대 선수 (없으면 null)
+export function partnerOf(st, side, id) {
+  for (const [a, b] of st.subs[side]) {
+    if (a === id) return b;
+    if (b === id) return a;
+  }
+  return null;
 }
 
 export function swapSlots(st, side, a, b) {
