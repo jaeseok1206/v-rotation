@@ -28,6 +28,25 @@ const roster = side => [...(teamOf(side)?.players || []), ...(st.extra[side] || 
 const player = (side, id) => roster(side).find(p => p.id === id);
 const posOf = (side, id) => player(side, id)?.pos;
 
+// 팀의 최근 경기 1세트 선발 라인업을 현재 라인업에 채움 (명단에 있는 선수만)
+function applyDefaultLineup(side) {
+  const def = teamOf(side)?.defaultLineup;
+  if (!def) return false;
+  const ids = new Set(roster(side).map(p => p.id));
+  const ok = id => (id && ids.has(id) ? id : null);
+  st.lineup[side] = def.positions.map(ok);
+  const [l1, l2] = (def.liberos || []).map(ok);
+  st.libero[side] = { recv: l1 || null, dig: l2 || null };
+  return true;
+}
+
+function defaultLineupNote() {
+  return S.SIDES.map(s => {
+    const g = teamOf(s)?.defaultLineup?.game;
+    return g ? `${esc(teamOf(s).name)}: ${g.date.slice(5).replace('-', '/')} vs ${esc(g.opponent)}` : null;
+  }).filter(Boolean).join(' · ');
+}
+
 function commit() {
   S.save(st);
   render();
@@ -188,14 +207,16 @@ function renderActions() {
       </div>`;
   } else if (st.phase === 'lineup') {
     const filled = S.SIDES.every(s => st.lineup[s].every(Boolean));
+    const note = st.setNo === 1 ? defaultLineupNote() : '';
     el.innerHTML = `
-      <div class="lineup-hint">자리를 탭한 뒤 오른쪽 명단에서 선수를 고르세요. 자리 두 곳을 차례로 탭하면 서로 바뀝니다.</div>
+      <div class="lineup-hint">${note ? `최근 경기 1세트 선발 (${note})<br>` : ''}자리를 탭해 선수 변경 · 자리 두 곳을 차례로 탭하면 교환</div>
       <div class="serve-pick">첫 서브
         ${S.SIDES.map(s => `<button class="seg ${st.serving === s ? 'on' : ''}" style="--c:${SIDE_COLOR[s]}" data-act="serve" data-side="${s}">${esc(teamOf(s)?.name)}</button>`).join('')}
       </div>
-      <div class="tool-row">
+      <div class="tool-row four">
         <button class="tool-btn" data-act="undo" ${st.history.length ? '' : 'disabled'}>↶ 되돌리기</button>
-        <button class="tool-btn" data-act="clear-lineup">라인업 비우기</button>
+        <button class="tool-btn" data-act="recent-lineup">최근 라인업</button>
+        <button class="tool-btn" data-act="clear-lineup">비우기</button>
         <button class="tool-btn" data-act="menu">메뉴</button>
       </div>
       <button class="primary-btn" data-act="start-set" ${filled ? '' : 'disabled'}>${st.setNo}세트 시작${filled ? '' : ' (12자리 모두 입력)'}</button>`;
@@ -251,6 +272,7 @@ function setupModal(canCancel) {
     const pts = v => Math.max(0, Math.min(60, Number(v) || 0));
     const score = setNo > 1 ? { home: pts($('#m-sh').value), away: pts($('#m-sa').value) } : undefined;
     st = S.newMatch(home, away, $('#m-serve').value, { setNo, setsWon: { home: sh, away: sa }, score });
+    S.SIDES.forEach(applyDefaultLineup);
     sel = null; benchTab = 'home';
     closeModal(); commit();
   });
@@ -406,6 +428,11 @@ document.addEventListener('click', e => {
       S.pushHistory(st);
       st.lineup = { home: Array(6).fill(null), away: Array(6).fill(null) };
       sel = { kind: 'slot', side: benchTab, idx: 0 };
+      return commit();
+    case 'recent-lineup':
+      S.pushHistory(st);
+      S.SIDES.forEach(applyDefaultLineup);
+      sel = null; toast('최근 경기 1세트 선발로 채움');
       return commit();
     case 'start-set': S.startSet(st); sel = null; toast(`${st.setNo}세트 시작`); return commit();
     case 'menu': return menuModal();

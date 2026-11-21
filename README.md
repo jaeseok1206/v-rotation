@@ -15,7 +15,7 @@ PC 브라우저: http://localhost:8000 (개발자도구 → 모바일 에뮬레�
 
 ## 선수 명단 갱신
 ```
-python3 scripts/fetch_players.py   # KOVO API → data/players.json
+python3 scripts/fetch_players.py   # KOVO API → data/players.json (선수 명단 + 팀별 최근 경기 1세트 선발)
 ```
 갱신 후 `sw.js`의 `CACHE` 버전을 올려 배포하면 폰에도 반영됩니다.
 
@@ -24,6 +24,7 @@ python3 scripts/fetch_players.py   # KOVO API → data/players.json
 
 ## 사용법
 - 새 경기: HOME/AWAY 팀, 시작 세트(1~5), 첫 서브 선택. 2세트 이후부터 볼 때는 지금까지 세트 스코어와 현재 점수도 입력
+- 새 경기를 만들면 양 팀 모두 최근 경기 1세트 선발 라인업(리베로 포함)이 기본으로 채워짐. `최근 라인업` 버튼으로 언제든 다시 불러오기
 - 라인업: 코트 자리 탭 → 오른쪽 명단에서 선수 탭 (다음 빈 자리로 자동 이동). 자리 두 곳 연속 탭 = 자리 교환. ⟲/⟳ = 한 칸 회전
 - 리베로: 코트 위/아래의 `리시브 L`(상대 서브 때), `디그 L`(우리 서브 때) 칸을 탭 → 명단에서 선택. 한 칸만 지정하면 그 선수가 둘 다 담당. 경기 중 후위 MB 자리에 상황에 맞는 리베로가 자동 표시 (MB가 서브할 때는 MB 표시)
 - 서브 중인 선수 옆에 배구공 표시
