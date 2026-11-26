@@ -12,6 +12,8 @@
   --ok: #3ddc84;
   --home: #2a6fd6;
   --away: #e2392f;
+  --home-fg: #fff;
+  --away-fg: #fff;
   --radius: 12px;
   color-scheme: dark;
 }
@@ -126,6 +128,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   --c: var(--home);
   width: min(30cqw, 47cqh); aspect-ratio: 1; border-radius: 50%;
   background: var(--c);
+  color: var(--fc, #fff);
   border: 2px solid #fff;
   box-shadow: 0 2px 6px #0007;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -157,8 +160,12 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   display: flex; flex-direction: column; min-height: 0;
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
 }
-#bench-tabs { display: grid; grid-template-columns: 1fr 1fr; flex: none; }
-.tab { padding: 9px 2px; font-size: 12px; font-weight: 800; color: var(--muted); border-bottom: 2px solid transparent; }
+#bench-tabs { display: grid; grid-template-columns: 1fr 1fr; flex: none; container-type: inline-size; }
+/* 팀명은 항상 한 줄: 탭 폭(패널의 절반)에 맞춰 글자 크기를 줄인다 */
+.tab {
+  padding: 9px 1px; font-size: min(12px, 7.6cqw); letter-spacing: -.03em; font-weight: 800; color: var(--muted);
+  border-bottom: 2px solid transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
 .tab.active { color: var(--text); border-bottom-color: var(--tc, var(--accent)); background: var(--panel-2); }
 #bench-list { list-style: none; margin: 0; padding: 4px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
 #bench-list li + li { margin-top: 3px; }
@@ -181,7 +188,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 #actions { padding: 8px 6px 8px; display: flex; flex-direction: column; gap: 6px; }
 .score-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .score-btn {
-  height: 72px; border-radius: 14px; font-size: 19px; font-weight: 900; color: #fff;
+  height: 72px; border-radius: 14px; font-size: 19px; font-weight: 900; color: var(--fc, #fff);
   background: var(--c); box-shadow: inset 0 -4px 0 #0003;
   display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15;
 }
@@ -195,7 +202,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .lineup-hint { font-size: 12px; color: var(--muted); text-align: center; }
 .serve-pick { display: grid; grid-template-columns: auto 1fr 1fr; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
 .seg { height: 38px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); font-size: 13px; font-weight: 700; }
-.seg.on { background: var(--c, var(--accent)); color: #fff; border-color: transparent; }
+.seg.on { background: var(--c, var(--accent)); color: var(--fc, #fff); border-color: transparent; }
 .primary-btn { height: 56px; border-radius: 14px; background: var(--accent); color: #1a1a1a; font-size: 18px; font-weight: 900; }
 .primary-btn:disabled { opacity: .4; }
 

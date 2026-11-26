@@ -75,5 +75,12 @@ for t in TEAMS:
     print(f"{t['name']}: {len(players)}명 | {desc}")
 
 dest = pathlib.Path(__file__).resolve().parent.parent / 'data' / 'players.json'
-dest.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding='utf-8')
-print('저장:', dest)
+try:
+    prev = json.loads(dest.read_text(encoding='utf-8'))
+except (OSError, ValueError):
+    prev = None
+if prev and prev.get('teams') == out['teams']:
+    print('변경 없음:', dest)  # updatedAt만 바뀌는 불필요한 커밋 방지
+else:
+    dest.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding='utf-8')
+    print('저장:', dest)

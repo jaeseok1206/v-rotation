@@ -19,6 +19,9 @@ python3 scripts/fetch_players.py   # KOVO API → data/players.json (선수 명�
 ```
 갱신 후 `sw.js`의 `CACHE` 버전을 올려 배포하면 폰에도 반영됩니다.
 
+## 팀 색상
+`app.js`의 `TEAM_COLORS`에 팀별 [주 색상, 보조 색상]이 있습니다. 두 팀 주 색상이 비슷하면 AWAY 팀은 보조 색상(그래도 비슷하면 기본 빨강/파랑)을 씁니다.
+
 ## 아이콘
 `icons/logo-source.png`(원본) → `python3 scripts/make_icons.py`로 아이콘 재생성
 

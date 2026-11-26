@@ -5,6 +5,19 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 
 const SIDE_LABEL = { home: 'HOME', away: 'AWAY' };
 const SIDE_COLOR = { home: 'var(--home)', away: 'var(--away)' };
+const SIDE_FG = { home: 'var(--home-fg)', away: 'var(--away-fg)' };
+
+// 팀 대표색 [주 색상, 보조 색상]. 두 팀 주 색상이 비슷하면 AWAY 팀은 보조 색상을 쓴다.
+const TEAM_COLORS = {
+  '1001': ['#0067B1', '#D7182A'], // 대한항공 점보스
+  '1005': ['#1C3D8C', '#E1251B'], // 현대캐피탈 스카이워커스
+  '1009': ['#0094D9', '#1B3A93'], // 우리카드 우리WON
+  '1004': ['#FFBC00', '#5F574B'], // KB손해보험 스타즈
+  '1006': ['#E60012', '#F39800'], // 한국전력 빅스톰
+  '1008': ['#F26F21', '#B5121B'], // OK저축은행 읏맨
+  '1002': ['#1F4FB4', '#00A0E0'], // 삼성화재 블루팡스
+};
+const FALLBACK_COLORS = { home: ['#2a6fd6'], away: ['#e2392f'] };
 const LIB_ROLE = { recv: '리시브', dig: '디그' };
 
 // 코트 화면 배치 (lineup index: 0=1번 ... 5=6번)
@@ -64,8 +77,27 @@ function toast(msg) {
 }
 
 // ---------- 렌더링 ----------
+const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+const colorDist = (a, b) => Math.hypot(...rgb(a).map((v, i) => v - rgb(b)[i]));
+// 밝은 배경엔 검은 글자, 어두운 배경엔 흰 글자
+const fgFor = hex => { const [r, g, b] = rgb(hex); return (r * 299 + g * 587 + b * 114) / 1000 > 160 ? '#111' : '#fff'; };
+
+function applyTeamColors() {
+  const [h] = TEAM_COLORS[st.home] || FALLBACK_COLORS.home;
+  const awayPair = TEAM_COLORS[st.away] || FALLBACK_COLORS.away;
+  let a = awayPair[0];
+  if (colorDist(h, a) < 120) {
+    // 주 색상이 겹치면 보조 색상, 그래도 겹치면 기본 빨강
+    a = awayPair.find(c => colorDist(h, c) >= 120) || (colorDist(h, '#e2392f') >= 120 ? '#e2392f' : '#2a6fd6');
+  }
+  const root = document.documentElement.style;
+  root.setProperty('--home', h); root.setProperty('--home-fg', fgFor(h));
+  root.setProperty('--away', a); root.setProperty('--away-fg', fgFor(a));
+}
+
 function render() {
   if (!st) return;
+  applyTeamColors();
   renderScorebar();
   renderCourt();
   renderBench();
@@ -115,7 +147,7 @@ function circleHTML(side, idx, libIdx) {
     inner = `<span class="no">${idx + 1}</span><span class="pos">자리</span>`;
   }
   const ball = server ? '<img class="serve-ball" src="icons/ball.png" alt="서브">' : '';
-  return `<div class="slot"><div class="pwrap"><button class="${cls.join(' ')}" style="--c:${SIDE_COLOR[side]}" data-act="slot" data-side="${side}" data-idx="${idx}">${inner}</button>${ball}</div></div>`;
+  return `<div class="slot"><div class="pwrap"><button class="${cls.join(' ')}" style="--c:${SIDE_COLOR[side]};--fc:${SIDE_FG[side]}" data-act="slot" data-side="${side}" data-idx="${idx}">${inner}</button>${ball}</div></div>`;
 }
 
 function renderCourt() {
@@ -197,7 +229,7 @@ function renderActions() {
   if (st.phase === 'play') {
     el.innerHTML = `
       <div class="score-row">
-        ${S.SIDES.map(s => `<button class="score-btn" style="--c:${SIDE_COLOR[s]}" data-act="score" data-side="${s}">
+        ${S.SIDES.map(s => `<button class="score-btn" style="--c:${SIDE_COLOR[s]};--fc:${SIDE_FG[s]}" data-act="score" data-side="${s}">
           ${SIDE_LABEL[s]} 득점<small>${esc(teamOf(s)?.name)}</small></button>`).join('')}
       </div>
       <div class="tool-row">
@@ -211,7 +243,7 @@ function renderActions() {
     el.innerHTML = `
       <div class="lineup-hint">${note ? `최근 경기 1세트 선발 (${note})<br>` : ''}자리를 탭해 선수 변경 · 자리 두 곳을 차례로 탭하면 교환</div>
       <div class="serve-pick">첫 서브
-        ${S.SIDES.map(s => `<button class="seg ${st.serving === s ? 'on' : ''}" style="--c:${SIDE_COLOR[s]}" data-act="serve" data-side="${s}">${esc(teamOf(s)?.name)}</button>`).join('')}
+        ${S.SIDES.map(s => `<button class="seg ${st.serving === s ? 'on' : ''}" style="--c:${SIDE_COLOR[s]};--fc:${SIDE_FG[s]}" data-act="serve" data-side="${s}">${esc(teamOf(s)?.name)}</button>`).join('')}
       </div>
       <div class="tool-row four">
         <button class="tool-btn" data-act="undo" ${st.history.length ? '' : 'disabled'}>↶ 되돌리기</button>
@@ -308,8 +340,8 @@ function setEndModal(winner) {
       <h2>${st.setNo}세트 종료</h2>
       <p>현재 ${sc} · 세트를 가져간 팀을 고르세요</p>
       <div class="btn-row">
-        <button class="btn" data-m="home" style="color:var(--home)">${esc(teamOf('home')?.name)}</button>
-        <button class="btn" data-m="away" style="color:var(--away)">${esc(teamOf('away')?.name)}</button>
+        <button class="btn" data-m="home" style="background:var(--home);color:var(--home-fg)">${esc(teamOf('home')?.name)}</button>
+        <button class="btn" data-m="away" style="background:var(--away);color:var(--away-fg)">${esc(teamOf('away')?.name)}</button>
       </div>
       <div class="btn-row"><button class="btn" data-m="cancel" style="grid-column:span 2">취소</button></div>`, m => {
       closeModal();
