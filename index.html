@@ -9,8 +9,16 @@
   <link rel="icon" href="icons/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    #splash { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center;
+      background: #0f1420; transition: opacity .35s ease; }
+    #splash img { width: 96px; height: 96px; animation: splash-spin 1.4s linear infinite; }
+    #splash.out { opacity: 0; pointer-events: none; }
+    @keyframes splash-spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
+  <div id="splash"><img src="icons/ball.png" alt=""></div>
   <div id="app">
     <header id="scorebar"></header>
 

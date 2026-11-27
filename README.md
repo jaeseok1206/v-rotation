@@ -23,7 +23,9 @@ python3 scripts/fetch_players.py   # KOVO API → data/players.json (선수 명�
 `app.js`의 `TEAM_COLORS`에 팀별 [주 색상, 보조 색상]이 있습니다. 두 팀 주 색상이 비슷하면 AWAY 팀은 보조 색상(그래도 비슷하면 기본 빨강/파랑)을 씁니다.
 
 ## 아이콘
-`icons/logo-source.png`(원본) → `python3 scripts/make_icons.py`로 아이콘 재생성
+`icons/logo-source.png`(원본) → `python3 scripts/make_icons.py`로 아이콘 재생성 (어두운 배경 `#0f1420`)
+
+앱을 열면 같은 배경색에 배구공 하나만 있는 로딩 화면이 잠깐 보입니다 (`index.html`의 `#splash`).
 
 ## 사용법
 - 새 경기: HOME/AWAY 팀, 시작 세트(1~5), 첫 서브 선택. 2세트 이후부터 볼 때는 지금까지 세트 스코어와 현재 점수도 입력

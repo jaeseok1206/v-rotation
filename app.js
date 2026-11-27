@@ -498,4 +498,12 @@ async function init() {
   }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
-init();
+
+// 로딩 화면: 준비되면 (최소 0.6초 보여준 뒤) 사라짐
+const splashMin = new Promise(r => setTimeout(r, 600));
+init().finally(() => splashMin.then(() => {
+  const el = document.getElementById('splash');
+  if (!el) return;
+  el.classList.add('out');
+  el.addEventListener('transitionend', () => el.remove(), { once: true });
+}));
